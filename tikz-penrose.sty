@@ -1,0 +1,412 @@
+\ProvidesPackage{tikz-penrose}
+
+\usepackage{ifthen}
+
+\usepackage{tikz}
+\usetikzlibrary{hobby,calc,shapes, positioning, backgrounds,trees,
+  decorations, decorations.markings, decorations.pathmorphing, arrows,
+  shapes.geometric, snakes}
+
+
+\usepackage{xparse}
+
+\tikzset{
+    left/.style={
+        bend left=90,
+        looseness=1.75
+    },
+    right/.style={
+        bend right=90,
+        looseness=1.75
+    },
+}
+
+
+\long\def\ifnodedefined#1#2#3{%%
+  \@ifundefined{pgf@sh@ns@#1}{#3}{#2}}
+
+\newcommand\aeundefinenode[1]{%%
+  \expandafter\ifx\csname pgf@sh@ns@#1\endcsname\relax
+  \else
+    \global\expandafter\let\csname pgf@sh@ns@#1\endcsname\relax
+  \fi
+}
+
+\newcommand\aeundefinethesenodes[1]{%%
+  \foreach \myn  in #1
+    {%%
+      \expandafter\aeundefinenode\expandafter{\myn}%%
+    }%%
+}
+
+\tikzset{/pgf/decoration/.cd,
+    number of sines/.initial=10,
+    angle step/.initial=17,
+}
+\newdimen\tmpdimen
+\pgfdeclaredecoration{completed sines}{initial}
+{
+    \state{initial}[
+        width=+0pt,
+        next state=move,
+        persistent precomputation={
+            \pgfmathparse{\pgfkeysvalueof{/pgf/decoration/angle step}}%
+            \let\anglestep=\pgfmathresult%
+            \let\currentangle=\pgfmathresult%
+            %\pgfmathsetlengthmacro{\pointsperanglestep}%
+            %     {(\pgfdecoratedremainingdistance/\pgfkeysvalueof{/pgf/decoration/number of sines})/360*\anglestep}%
+        %
+            \pgfmathsetlengthmacro{\pointsperanglestep}{0.8}%
+            }] {}
+    \state{move}[width=+\pointsperanglestep, next state=draw]{
+        \pgfpathmoveto{\pgfpointorigin}
+    }
+    \state{draw}[width=+\pointsperanglestep, switch if less than=1.5*\pointsperanglestep to final, % <- bit of a hack
+        persistent postcomputation={
+        \pgfmathparse{mod(\currentangle+\anglestep, 360)}%
+        \let\currentangle=\pgfmathresult%
+    }]{%
+        \pgfmathsin{+\currentangle}%
+        \tmpdimen=\pgfdecorationsegmentamplitude%
+        \tmpdimen=\pgfmathresult\tmpdimen%
+        \divide\tmpdimen by2\relax%
+        \pgfpathlineto{\pgfqpoint{0pt}{\tmpdimen}}%
+    }
+    \state{final}{
+        \ifdim\pgfdecoratedremainingdistance>0pt\relax
+            \pgfpathlineto{\pgfpointdecoratedpathlast}
+        \fi
+   }
+}
+
+\tikzset{
+    symmetric/.style={
+        decoration={completed sines, amplitude=5pt, number of sines=3},
+        decorate    
+    },
+    deriv/.style={
+      dashed
+    },
+}
+
+
+
+\DeclareDocumentCommand \tpten
+  {D(){0,0}  g d<> O{\rowsep}}
+  {
+    \xdef\destroylist{}
+    \let\lastlnode\undefined
+    \def\upper{#2}
+    \def\lower{#3}
+    \ifdefined\feyncolumn
+      \begin{scope}[shift={($(scope1.center)+(#1)$)}, node distance=#4, local bounding box = scope1,]
+      \coordinate (o) at (0,-#4);
+      \xdef\lastunode{o}
+      \coordinate (ob) at (0,-#4-#4);
+      \def\lastlnode{ob}
+    \else
+    \begin{scope}[local bounding box = scope1, node distance=#4]
+      \coordinate (o) at (0,-#4);
+      \xdef\lastunode{o}
+      \coordinate (ob) at (0,-#4-#4);
+      \def\lastlnode{ob}
+    \fi
+
+    \IfNoValueTF {#2}{     
+      \node (tl) [right of = \lastunode] {};
+      \xdef\lastunode{tl}
+      \coordinate (o) at (tl.center);
+    }{
+      \foreach \u in \upper {
+        % If the node is already defined we attach them, summation convention
+        \ifnodedefined{\u}
+        {
+          \xdef\destroylist{\u, \destroylist}
+          \node (temp) [right of = \lastunode] {};
+          \draw [out = 90](temp) to (\u);
+          \aeundefinenode{\u}
+        }{}
+        \node (\u) [right of = \lastunode, fill, circle, minimum size=1mm] {};
+        \xdef\lastunode{\u}
+      }
+      \node (tl) [right of = \lastunode] {};
+      \xdef\lastunode{tl}
+    }
+
+    \IfNoValueTF {#3}{
+      \node (bl) [right of = \lastlnode] {};
+      \xdef\lastlnode{bl}
+      \coordinate (ob) at (bl.center);
+    }{
+      \foreach \l in \lower {
+        \ifnodedefined{\l}
+        {
+          \xdef\destroylist{\l, \destroylist}
+          \node (temp) [right of = \lastlnode] {};
+          \draw [out = -90](temp) to (\l);
+          \aeundefinenode{\l}
+        }{}
+        \node (\l) [right of = \lastlnode, fill, circle] {};
+        \xdef\lastlnode{\l}
+      }
+      \node (bl) [right of = \lastlnode] {};
+      \xdef\lastlnode{bl}
+    }
+    \draw [] (o.center) -- (\lastunode.center) -- (\lastlnode.center) -- (ob.center) -- cycle;
+    
+    \end{scope}
+    \def\feyncolumn{y}
+  }
+
+\DeclareDocumentCommand \tpout
+%%% Draw the external tensor
+{g d<> O{\rowsep}}
+{
+  \def\upper{#1}
+  \def\lower{#2}
+
+  \coordinate (o) at (tensoric.north west);
+  \xdef\lastunode{o}
+  \coordinate (ob) at (tensoric.south west);
+  \def\lastlnode{ob}
+
+  \IfNoValueTF {#1}{}{
+    \foreach \u in \upper {
+      \ifnodedefined{\u}
+      {
+        \xdef\destroylist{\u, \destroylist}
+        \node (temp) [right of = \lastunode, fill] {};
+        \draw [out = -90, in = 90](temp) to (\u);
+      }{}
+        \node (\u) [right of = \lastunode] {};
+        \xdef\lastunode{\u}
+    }
+    \node (tl) [right of = \lastunode] {};
+    \xdef\lastunode{tl}
+    }
+    %\draw (tensoric.north east) -- (tensoric.north west);
+
+    \IfNoValueTF {#2}{}{
+    \foreach \l in \lower {
+      \ifnodedefined{\l}
+      {
+        \xdef\destroylist{\l, \destroylist}
+        \node (temp) [right of = \lastlnode, fill, yshift=-#3] {};
+        \draw [out = 90, in = -90](temp) to (\l);
+      }{}
+
+      \node (\l) [right of = \lastlnode] {};
+      \xdef\lastlnode{\l}
+      
+    }
+    \node (bl) [right of = \lastlnode] {};
+    \xdef\lastlnode{bl}
+    }
+
+    %\draw [rounded corners, help lines] (tensoric.north west) rectangle (tensoric.south east);
+}
+\DeclareDocumentCommand \tpsym
+{m O{1cm}}
+{
+  \def\lastnode{0,0}
+  \foreach \n [count=\i] in {#1} {
+    \ifthenelse{\equal{\i}{1}}{
+      \coordinate (temp) at ($(\n)+(-\rowsep/2,0)$); 
+      \xdef\lastnode{temp}
+    }{
+    \draw [line width=1ex, symmetric]  (\lastnode)+(0,#2) to ($(\n)+(0,#2)$);
+        \xdef\lastnode{\n}
+    }
+  }
+  %\draw [line width=1ex] (\lastnode)+(0,#2) to ($(\lastnode)+(\rowsep/2,0)+(0,#2)$);
+}
+\DeclareDocumentCommand \tpasym
+{m O{1cm}}
+{
+  \def\lastnode{0,0}
+  \foreach \n [count=\i] in {#1} {
+    \ifthenelse{\equal{\i}{1}}{
+      \coordinate (temp) at ($(\n)+(-\rowsep/2,0)$); 
+      \xdef\lastnode{temp}
+      %\xdef\lastnode{\n}
+    }{
+    \draw [line width=1ex]  (\lastnode)+(0,#2) to ($(\n)+(0,#2)$);
+    \xdef\lastnode{\n}
+    }
+    %
+  }
+  \draw [line width=1ex] (\lastnode)+(0,#2) to ($(\lastnode)+(\rowsep/2,0)+(0,#2)$);
+}
+
+\DeclareDocumentEnvironment{tpderiv}
+%%% Draw the circle around a tensor to indicate differentiation
+{g d<>}
+%{D(){0,0} g d<>  O{\rowsep}}
+{
+\begin{scope}[local bounding box=deriv]
+}
+{
+ \end{scope}
+ \draw [deriv, rounded corners=1ex] (deriv.north east)+(\rowsep/2, \rowsep/2) rectangle ($(deriv.south west)+(-\rowsep/2, -\rowsep/2)$);
+ \IfNoValueTF {#1}{}{ \node [fill, circle, minimum size=2mm, inner sep=0pt] (#1) at ($(deriv.west)+(-\rowsep/2, -\rowsep/2)$) {}; }
+ \IfNoValueTF {#2}{}{ \node [fill, circle, minimum size=2mm, inner sep=0pt,out=0] (#2) at ($(deriv.east)+(\rowsep/2, \rowsep/2)$) {}; }
+}
+
+\DeclareDocumentCommand \tpstr
+  {D(){0,0}  g d<> O{\rowsep}}
+  {
+    \xdef\destroylist{}
+    \let\lastlnode\undefined
+    \def\upper{#2}
+    \def\lower{#3}
+    \ifdefined\feyncolumn
+      \begin{scope}[shift={($(scope1.center)+(#1)$)}, node distance=#4, local bounding box = scope1,]
+      \coordinate (o) at (0,-#4);
+      \xdef\lastunode{o}
+      \coordinate (ob) at (0,-#4-#4);
+      \def\lastlnode{ob}
+    \else
+    \begin{scope}[local bounding box = scope1, node distance=#4]
+      \coordinate (o) at (0,-#4);
+      \xdef\lastunode{o}
+      \coordinate (ob) at (0,-#4-#4);
+      \def\lastlnode{ob}
+    \fi
+
+    \IfNoValueTF {#2}{     
+      \node (tl) [right of = \lastunode] {};
+      \xdef\lastunode{tl}
+      \coordinate (o) at (tl.center);
+    }{
+      \foreach \u in \upper {
+        % If the node is already defined we attach them, summation convention
+        \ifnodedefined{\u}
+        {
+          \xdef\destroylist{\u, \destroylist}
+          \node (temp) {};
+          \draw [out = 90](temp) to (\u);
+          \aeundefinenode{\u}
+        }{}
+        \node (\u) [fill, circle, minimum size=1mm] {};
+        \xdef\lastunode{\u}
+      }
+
+    }
+
+    \IfNoValueTF {#3}{
+      \node (bl) [below of = \lastunode] {};
+      \xdef\lastlnode{bl}
+      \coordinate (ob) at (bl.center);
+    }{
+      \foreach \l [count=\i] in \lower {
+        \ifnodedefined{\l}
+        {
+          \xdef\destroylist{\l, \destroylist}
+          \ifthenelse{\equal{\i}{1}}{
+            \node (temp) [left of = \lastlnode] {};
+            }
+            {
+              \node (temp) [right of = \lastlnode] {};
+            }
+          \draw [out = -90](temp) to (\l);
+          \aeundefinenode{\l}
+        }{}
+        \ifthenelse{\equal{\i}{1}}{
+          \node (\l) [left of = ob, fill, circle] {};
+          \xdef\firstbot{\l}
+          }{
+            \node (\l) [right of = ob, fill, circle] {};
+          }
+        \xdef\lastlnode{\l}
+      }
+    }
+    \fill []  (\lastunode.center) [bend left] to (\lastlnode.center) -- (\firstbot.center) [bend left] to cycle;
+    
+    \end{scope}
+    \def\feyncolumn{y}
+  }
+
+
+\DeclareDocumentCommand \tpmet
+%%% Draw the metric tensor
+  {D(){0,0} g d<>  O{\rowsep}}
+  {
+    \let\lastlnode\undefined
+    \def\upper{#2}
+    \def\lower{#3}
+    \ifdefined\feyncolumn
+      \begin{scope}[shift={($(scope1.center)+(#1)$)}, node distance=#4, local bounding box = scope1,]
+      \coordinate (o) at (0,-#4-#4);
+      \xdef\lastunode{o}
+    \else
+    \begin{scope}[local bounding box = scope1, node distance=#4]
+      \coordinate (o) at (1,#4);
+      \xdef\lastunode{o}
+    \fi
+    \IfNoValueTF {#2}{}{
+    \foreach \u in \upper {
+      \ifnodedefined{\u}
+      {
+        \xdef\destroylist{\u, \destroylist}
+        \node (temp) [right of = \lastunode] {};
+        \draw [out = 90, in = -90](temp) to (\u);
+      }{}
+        \node (\u) [right of = \lastunode] {};
+        \xdef\lastunode{\u}
+      
+    }
+    \node (tl) [right of = \lastunode] {};
+    \xdef\lastunode{tl}
+    }
+    
+    \IfNoValueTF {#3}{}{
+     \coordinate (ob) at (0,-#4-#4);
+    \def\lastlnode{ob}
+    \foreach \l in \lower {
+      \ifnodedefined{\l}
+      {
+        \xdef\destroylist{\l, \destroylist}
+        \node (temp) [right of = \lastlnode] {};
+        \draw [out = -90, in = 90](temp) to (\l);
+      }{}
+
+      \node (\l) [right of = \lastlnode] {};
+      \xdef\lastlnode{\l}
+      
+    }
+    \node (bl) [right of = \lastlnode] {};
+    \xdef\lastlnode{bl}
+    }
+    %\draw ($(o)+(1,0)$) to ($(o)+(1,-.5)$); \draw ($(\lastunode)+(-1,0)$) to ($(\lastunode)+(-1,-.5)$);
+    \IfNoValueTF {#2}{}{\draw [right] ($(o)+(#4,.125)$) to ($(\lastunode)+(-#4,.125)$);}
+    \IfNoValueTF {#3}{}{\draw [left] ($(ob)+(#4,-.125)$) to ($(\lastlnode)+(-#4,-.125)$);}
+    %\draw [rounded corners] (o.east) -- (\lastunode.east) -- (\lastlnode.east) -- (ob.east) --cycle;
+    
+    \end{scope}
+    \def\feyncolumn{y}
+  }
+
+\DeclareDocumentEnvironment{tpenrose}{O{2cm}O{0.5cm}O{0.7cm}O{0.3cm}}%
+{%
+
+  \let\lastvertex\undefined
+  \begin{tikzpicture}
+    \begin{scope}[local bounding box = tensoric]
+    
+  \def\colsep{#1}
+  \def\rowsep{#2}
+  \xdef\intsep{#3}
+  \xdef\yintsep{#4}
+}
+{%
+    \relax\colsep
+  \relax\rowsep
+  \relax\intsep
+  \relax\yintsep
+  \let\lastvertex\undefined
+
+  \end{scope}
+  \end{tikzpicture}
+  \aeundefinethesenodes{\destroylist}
+
+}

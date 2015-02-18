@@ -87,6 +87,12 @@
     deriv/.style={
       dashed
     },
+    joint/.style={
+      inner sep=0pt,  
+      minimum size=3,
+      fill,
+      circle
+    }
 }
 
 
@@ -126,7 +132,7 @@
           \draw [out = 90](temp) to (\u);
           \aeundefinenode{\u}
         }{}
-        \node (\u) [right of = \lastunode, fill, circle, minimum size=1mm] {};
+        \node (\u) [joint, right of = \lastunode, fill, circle, inner sep=0pt,  minimum size=3] {};
         \xdef\lastunode{\u}
       }
       \node (tl) [right of = \lastunode] {};
@@ -146,7 +152,7 @@
           \draw [out = -90](temp) to (\l);
           \aeundefinenode{\l}
         }{}
-        \node (\l) [right of = \lastlnode, fill, circle] {};
+        \node (\l) [joint, right of = \lastlnode, fill, circle] {};
         \xdef\lastlnode{\l}
       }
       \node (bl) [right of = \lastlnode] {};
@@ -165,6 +171,8 @@
   \def\upper{#1}
   \def\lower{#2}
 
+  \node [minimum size=\rowsep]at (tensoric.north) {};
+\node [minimum size=\rowsep]at (tensoric.south) {};
   \coordinate (o) at (tensoric.north west);
   \xdef\lastunode{o}
   \coordinate (ob) at (tensoric.south west);
@@ -175,7 +183,7 @@
       \ifnodedefined{\u}
       {
         \xdef\destroylist{\u, \destroylist}
-        \node (temp) [right of = \lastunode, fill] {};
+        \node (temp) [right of = \lastunode, fill, inner sep=0pt,  minimum size=3] {};
         \draw [out = -90, in = 90](temp) to (\u);
       }{}
         \node (\u) [right of = \lastunode] {};
@@ -191,7 +199,7 @@
       \ifnodedefined{\l}
       {
         \xdef\destroylist{\l, \destroylist}
-        \node (temp) [right of = \lastlnode, fill, yshift=-#3] {};
+        \node (temp) [right of = \lastlnode, fill, xshift=-\rowsep-2, inner sep=0pt,  minimum size=3] {};
         \draw [out = 90, in = -90](temp) to (\l);
       }{}
 
@@ -247,7 +255,7 @@
 }
 {
  \end{scope}
- \draw [deriv, rounded corners=1ex] (deriv.north east)+(\rowsep/2, \rowsep/2) rectangle ($(deriv.south west)+(-\rowsep/2, -\rowsep/2)$);
+ \draw [deriv, rounded corners=2.7*\rowsep] (deriv.north east)+(\rowsep/2, \rowsep/2) rectangle ($(deriv.south west)+(-\rowsep/2, -\rowsep/2)$);
  \IfNoValueTF {#1}{}{ \node [fill, circle, minimum size=2mm, inner sep=0pt] (#1) at ($(deriv.west)+(-\rowsep/2, -\rowsep/2)$) {}; }
  \IfNoValueTF {#2}{}{ \node [fill, circle, minimum size=2mm, inner sep=0pt,out=0] (#2) at ($(deriv.east)+(\rowsep/2, \rowsep/2)$) {}; }
 }
@@ -336,51 +344,64 @@
     \def\lower{#3}
     \ifdefined\feyncolumn
       \begin{scope}[shift={($(scope1.center)+(#1)$)}, node distance=#4, local bounding box = scope1,]
-      \coordinate (o) at (0,-#4-#4);
-      \xdef\lastunode{o}
     \else
     \begin{scope}[local bounding box = scope1, node distance=#4]
-      \coordinate (o) at (1,#4);
-      \xdef\lastunode{o}
     \fi
     \IfNoValueTF {#2}{}{
-    \foreach \u in \upper {
-      \ifnodedefined{\u}
-      {
-        \xdef\destroylist{\u, \destroylist}
-        \node (temp) [right of = \lastunode] {};
-        \draw [out = 90, in = -90](temp) to (\u);
-      }{}
-        \node (\u) [right of = \lastunode] {};
-        \xdef\lastunode{\u}
-      
-    }
-    \node (tl) [right of = \lastunode] {};
-    \xdef\lastunode{tl}
+      \foreach \u [count=\i] in \upper {
+        \ifthenelse{\equal{\i}{1}}{
+          \ifnodedefined{\u}
+          {
+            \xdef\destroylist{\u, \destroylist}
+            \node (temp) at (0,0) {};
+            \draw [in=-90, out=90](temp.center) to (\u);
+          }{}
+          \node (\u) at (temp.center) {};
+          \xdef\firstunode{\u}
+          
+        }
+        {
+          \ifnodedefined{\u}
+          {
+            \xdef\destroylist{\u, \destroylist}
+            \node (temp) [right of = \firstunode] {};
+            \draw [in=-90, out=90](temp) to (\u.center);
+          }{}
+          \node (\u) [right of = \firstunode] {};
+          \xdef\lastunode{\u}
+          
+        }
+      }
     }
     
     \IfNoValueTF {#3}{}{
-     \coordinate (ob) at (0,-#4-#4);
-    \def\lastlnode{ob}
-    \foreach \l in \lower {
-      \ifnodedefined{\l}
-      {
-        \xdef\destroylist{\l, \destroylist}
-        \node (temp) [right of = \lastlnode] {};
-        \draw [out = -90, in = 90](temp) to (\l);
-      }{}
-
-      \node (\l) [right of = \lastlnode] {};
-      \xdef\lastlnode{\l}
-      
+      \def\lastlnode{ob}
+      \foreach \l [count=\i] in \lower {
+        \ifthenelse{\equal{\i}{1}}{
+          \ifnodedefined{\l}
+          {
+            \xdef\destroylist{\l, \destroylist}
+            \node (temp) at (0,0) {};
+            \draw [out=-90, in=90] (temp.center) to (\l);
+          }{}
+          \node (\l) at (temp.center) {};
+          \xdef\firstlnode{\l}
+        }{
+          \ifnodedefined{\l}
+          {
+            \xdef\destroylist{\l, \destroylist}
+            \node (temp) [right of = \firstlnode] {};
+            \draw [out=-90, in=90](temp.center) to (\l.center);
+          }{}
+          \node (\l) [right of = \firstlnode] {};
+          \xdef\lastlnode{\l}
+        }
+      }
     }
-    \node (bl) [right of = \lastlnode] {};
-    \xdef\lastlnode{bl}
-    }
-    %\draw ($(o)+(1,0)$) to ($(o)+(1,-.5)$); \draw ($(\lastunode)+(-1,0)$) to ($(\lastunode)+(-1,-.5)$);
-    \IfNoValueTF {#2}{}{\draw [right] ($(o)+(#4,.125)$) to ($(\lastunode)+(-#4,.125)$);}
-    \IfNoValueTF {#3}{}{\draw [left] ($(ob)+(#4,-.125)$) to ($(\lastlnode)+(-#4,-.125)$);}
-    %\draw [rounded corners] (o.east) -- (\lastunode.east) -- (\lastlnode.east) -- (ob.east) --cycle;
+    % \draw ($(o)+(1,0)$) to ($(o)+(1,-.5)$); \draw ($(\lastunode)+(-1,0)$) to ($(\lastunode)+(-1,-.5)$);
+    \IfNoValueTF {#2}{}{\draw [right] (\firstunode.center) to (\lastunode.center);}
+    \IfNoValueTF {#3}{}{\draw [left] (\firstlnode.center) to (\lastlnode.center);}
+    % \draw [rounded corners] (o.east) -- (\lastunode.east) -- (\lastlnode.east) -- (ob.east) --cycle;
     
     \end{scope}
     \def\feyncolumn{y}
@@ -409,4 +430,25 @@
   \end{tikzpicture}
   \aeundefinethesenodes{\destroylist}
 
+}
+
+\DeclareDocumentEnvironment{tpenrosema}{O{2em}O{1em}O{0.6em}O{0.3em}}%
+{%
+  \let\lastvertex\undefined
+  \begin{tikzpicture}[y=1em, x=1em, node distance=1em, baseline={($(current bounding box.east)+(-5em, -1ex)$)}]
+    \begin{scope}[local bounding box = tensoric]
+  \def\colsep{#1}
+  \def\rowsep{#2}
+  \xdef\intsep{#3}
+  \xdef\yintsep{#4}
+}
+{%
+    \relax\colsep
+  \relax\rowsep
+  \relax\intsep
+  \relax\yintsep
+  \let\lastvertex\undefined
+  \end{scope}
+  \end{tikzpicture}
+  \aeundefinethesenodes{\destroylist}
 }
